@@ -1,0 +1,17 @@
+# Base real: baixar sob demanda, nunca versionar
+/data/*
+!/data/.gitkeep
+# Compilados e resultados locais
+/bin/
+/build/
+*.o
+*.out
+*.log
+*.csv
+*.tsv
+*.prof
+*.nsys-rep
+*.qdrep
+# IDE/OS
+.vscode/
+.DS_Store

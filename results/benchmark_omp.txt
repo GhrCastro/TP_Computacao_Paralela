@@ -1,0 +1,17 @@
+# Benchmark K-means: sequencial vs OpenMP
+data:     2026-11-25T19:05Z
+cpu:      12th Gen Intel(R) Core(TM) i5-12400
+nucleos:  6 fisicos, 12 logicos
+so:       Linux 7.3.3-200.fc44.x86_64
+gcc:      gcc (GCC) 16.2.1 20261029 (Red Hat 16.2.1-3)
+flags:    -O3 -std=c11 (seq) | -O3 -std=c11 -fopenmp (omp), schedule(static)
+params:   dataset=data/covtype.data K=64 iters=50 seed=42 repeticoes=3 (mediana)
+
+modo        time_s    real_s  speedup eficiencia            inercia dif_inercia  tempos_individuais
+seq         54.001     55.52        -          -      120313.163175           -  53.970262625 54.001394294 54.280499185
+omp-1       54.140     55.65     1.00       1.00      120313.163175    0.00e+00  54.196585187 54.139825291 53.944259016
+omp-2       27.073     28.59     1.99       1.00      120313.163175    0.00e+00  27.101399551 27.073015066 27.041489132
+omp-4       13.729     15.24     3.93       0.98      120313.163175    0.00e+00  13.729201734 13.633150179 13.730380040
+omp-8       11.910     13.41     4.53       0.57      120313.163175    0.00e+00  12.051762504 11.856633372 11.909825735
+omp-16      10.008     11.50     5.40       0.34      120313.163175    0.00e+00  10.007517696 10.057957852 9.984303745
+omp-32       9.249     10.76     5.84       0.18      120313.163175    0.00e+00  9.248880090 9.233606651 9.265139282

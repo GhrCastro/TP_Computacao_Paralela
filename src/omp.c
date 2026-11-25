@@ -1,6 +1,26 @@
 /* K-means de Lloyd com OpenMP.
- * Tempos reais no equipamento final: PENDENTE (K=64, iters=50, seed=42).
- * Compilacao: gcc -O3 -fopenmp. Nao inclui leitura, normalizacao ou SSE final.
+ * Compilacao: gcc -O3 -std=c11 -fopenmp. time_s mede so kmeans_run (sem
+ * leitura, normalizacao ou SSE final). Gerado por scripts/benchmark.sh
+ * (resumo completo em results/benchmark_omp.txt).
+ *
+ * Tempos reais medidos em 2026-11-25, Covertype completo (n=581012, d=54),
+ * K=64, iters=50, seed=42, mediana de 3 execucoes:
+ *   Hardware: Intel Core i5-12400 (6 nucleos fisicos, 12 logicos), 32 GB,
+ *             Linux 7.3.3 (Fedora 44), GCC 16.2.1.
+ *
+ *   threads   time_s   speedup   eficiencia
+ *   seq       54.001      -          -
+ *   1         54.140    1.00       1.00
+ *   2         27.073    1.99       1.00
+ *   4         13.729    3.93       0.98
+ *   8         11.910    4.53       0.57
+ *   16        10.008    5.40       0.34
+ *   32         9.249    5.84       0.18
+ *   Inercia 120313.163175 identica ao sequencial em todas as configuracoes.
+ *   Ate 4 threads o ganho e quase linear. Acima de 6 threads os nucleos
+ *   fisicos acabam: 8 threads ja usa hyper-threading e 16/32 sao
+ *   oversubscription (mais threads que os 12 logicos), por isso a eficiencia
+ *   cai. O pequeno ganho ate 32 threads foi medido, nao garantido.
  *
  * Onde paralelizamos:
  *   Apenas o laco sobre os N pontos (atribuicao + acumulacao). Cada ponto

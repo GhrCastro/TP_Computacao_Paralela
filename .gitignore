@@ -1,17 +1,19 @@
-# Base real: baixar sob demanda, nunca versionar
+# Dados reais nao devem ser versionados
 /data/*
 !/data/.gitkeep
-# Compilados e resultados locais
+
+# Resultados de benchmark e binarios locais
 /bin/
 /build/
+/results/*.csv
+/results/*.tsv
 *.o
 *.out
 *.log
-*.csv
-*.tsv
 *.prof
 *.nsys-rep
 *.qdrep
-# IDE/OS
+
+# Ferramentas de desenvolvimento
 .vscode/
 .DS_Store

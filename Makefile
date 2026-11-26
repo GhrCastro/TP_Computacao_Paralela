@@ -1,9 +1,12 @@
 CC      = gcc
+CXX     = g++
 NVCC    = nvcc
 CFLAGS  = -O3 -std=c11 -Wall -Wextra -Iinclude
 CUDA_ARCH ?= sm_75
 NVCCFLAGS = -O3 -std=c++14 -arch=$(CUDA_ARCH) -Iinclude
 LDLIBS  = -lm
+CUDA_LDFLAGS ?=
+CUDA_LDLIBS ?= -lcudart -ldl -lrt -pthread -lm
 
 # `all` continua portavel em maquinas sem CUDA Toolkit. Use `make cuda` e
 # `make test_cuda` explicitamente em uma maquina com nvcc e GPU NVIDIA.
@@ -42,10 +45,10 @@ build/test_cuda.o: tests/test_cuda.c include/kmeans.h | build
 	$(CC) $(CFLAGS) -c $< -o $@
 
 bin/kmeans_cuda: build/main.o build/common.o build/cuda.o | bin
-	$(NVCC) $(NVCCFLAGS) $^ $(LDLIBS) -o $@
+	$(CXX) $^ $(CUDA_LDFLAGS) $(CUDA_LDLIBS) -o $@
 
 bin/test_cuda: build/test_cuda.o build/common.o build/cuda.o | bin
-	$(NVCC) $(NVCCFLAGS) $^ $(LDLIBS) -o $@
+	$(CXX) $^ $(CUDA_LDFLAGS) $(CUDA_LDLIBS) -o $@
 
 test: bin/test_common bin/test_seq bin/test_omp
 	./bin/test_common

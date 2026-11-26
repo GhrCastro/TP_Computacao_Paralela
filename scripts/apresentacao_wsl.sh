@@ -11,13 +11,22 @@ fi
 tp_kmeans_demo_wsl() (
     set -Eeuo pipefail
 
-    local script_dir project_dir tool_dir demo_tmp
+    local script_source script_dir project_dir tool_dir demo_tmp
     local demo_iters demo_threads gpu_cc cuda_arch
     local nvcc_bin cuda_runtime_root cuda_nvcc_root cuda_apt_root
     local cyan green yellow red reset
+    local CDPATH=
 
-    script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-    project_dir=$(cd "$script_dir/.." && pwd)
+    # CDPATH pode fazer `cd` imprimir o destino e corromper command substitution.
+    # Resolva a partir de um caminho absoluto, silencie cd e use diretorio fisico.
+    script_source=${BASH_SOURCE[0]}
+    if [[ $script_source != /* ]]; then script_source="$PWD/$script_source"; fi
+    script_dir=$(cd -P -- "$(dirname -- "$script_source")" >/dev/null && pwd -P)
+    project_dir=$(cd -P -- "$script_dir/.." >/dev/null && pwd -P)
+    [[ -n $project_dir && -f $project_dir/Makefile ]] || {
+        printf '[ERRO] Nao foi possivel localizar a raiz do projeto a partir de %s\n' "$script_source" >&2
+        return 1
+    }
     tool_dir="$project_dir/.wsl-cuda"
     demo_iters=${DEMO_ITERS:-3}
     demo_threads=${DEMO_THREADS:-"1 2 4 8 16 32"}
@@ -216,11 +225,9 @@ tp_kmeans_demo_wsl() (
     printf 'Para limitar threads: DEMO_THREADS="1 2 4 8" source scripts/apresentacao_wsl.sh\n'
 )
 
-if tp_kmeans_demo_wsl "$@"; then
-    unset -f tp_kmeans_demo_wsl
-    return 0
-else
-    tp_demo_status=$?
-    unset -f tp_kmeans_demo_wsl
-    return "$tp_demo_status"
-fi
+# Nao coloque esta chamada em `if`, `&&` ou `||`: esses contextos desativam o
+# errexit dentro da funcao Bash e permitiriam continuar depois de uma falha.
+tp_kmeans_demo_wsl "$@"
+tp_demo_status=$?
+unset -f tp_kmeans_demo_wsl
+return "$tp_demo_status"

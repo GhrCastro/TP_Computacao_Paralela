@@ -17,6 +17,8 @@
  *   16        10.008    5.40       0.34
  *   32         9.249    5.84       0.18
  *   Inercia 120313.163175 identica ao sequencial em todas as configuracoes.
+ *   Experimento CUDA separado: GTX 1660 Ti, seq=147.170 s, CUDA=13.068 s,
+ *   speedup=11.26 (results/benchmark_cuda.txt). Nao misturar as maquinas.
  *   Ate 4 threads o ganho e quase linear. Acima de 6 threads os nucleos
  *   fisicos acabam: 8 threads ja usa hyper-threading e 16/32 sao
  *   oversubscription (mais threads que os 12 logicos), por isso a eficiencia

@@ -1,8 +1,15 @@
 /* K-means de Lloyd em CUDA.
  *
- * Tempo CUDA real: PENDENTE. O driver enxerga uma GTX 1660 Ti (CC 7.5), mas
- * o CUDA Toolkit/nvcc nao esta instalado no ambiente desta implementacao.
- * Nao foi inventada medicao. Consultar results/benchmark_cuda.txt.
+ * Tempos reais CPU de Arthur (2026-11-25, i5-12400 6C/12T, Fedora 44,
+ * GCC 16.2.1, Covertype, K=64, 50 iteracoes, seed=42, mediana de 3):
+ *   seq=54.001 s; OpenMP 1=54.140, 2=27.073, 4=13.729, 8=11.910,
+ *   16=10.008, 32=9.249 s; inercia=120313.163175.
+ * Experimento CUDA independente, na mesma entrada (2026-11-25, i7-10750H,
+ * WSL2, GTX 1660 Ti 6 GB CC 7.5, driver 621.24, CUDA 11.5, mediana de 3):
+ *   seq=147.170 s; CUDA=13.068 s; speedup=11.26; mesma inercia.
+ * Tempos CUDA individuais: 11.013, 13.068, 14.529 s. O time_s inclui
+ * alocacao, HtoD, kernels, sincronizacao e DtoH; nao inclui CSV/SSE final.
+ * Evidencia completa: results/benchmark_cuda.txt.
  *
  * Paralelizacao:
  *   - MAP: uma thread associa cada ponto ao centroide mais proximo;

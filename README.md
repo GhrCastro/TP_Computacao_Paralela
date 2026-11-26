@@ -48,3 +48,5 @@ tambem [o contrato tecnico](docs/CONTRATO.md),
 [o guia de entrevista](docs/ENTREVISTA.md). Para o dia da banca, abra
 [APRESENTACAO.html](APRESENTACAO.html) no navegador: ele contem o roteiro de
 execucao, comandos copiaveis, saidas esperadas e diagnostico, tudo offline.
+No WSL, a demonstracao inteira tambem pode ser executada com um unico comando:
+`source scripts/apresentacao_wsl.sh`.

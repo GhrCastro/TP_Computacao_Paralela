@@ -45,4 +45,6 @@ O documento de entrega exigido pelo professor e [readme.txt](readme.txt). Veja
 tambem [o contrato tecnico](docs/CONTRATO.md),
 [os resultados OpenMP](results/benchmark_omp.txt),
 [os resultados CUDA](results/benchmark_cuda.txt) e
-[o guia de entrevista](docs/ENTREVISTA.md).
+[o guia de entrevista](docs/ENTREVISTA.md). Para o dia da banca, abra
+[APRESENTACAO.html](APRESENTACAO.html) no navegador: ele contem o roteiro de
+execucao, comandos copiaveis, saidas esperadas e diagnostico, tudo offline.

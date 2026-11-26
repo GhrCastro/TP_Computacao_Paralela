@@ -29,6 +29,11 @@ double calculate_inertia(const Dataset *data, const float *centroids, int k);
 int kmeans_run(const Dataset *data, int k, int iters,
                float *centroids, int *labels);
 
+#ifdef _OPENMP
+/* Numero real de threads da ultima regiao paralela executada por omp.c. */
+int kmeans_omp_last_thread_count(void);
+#endif
+
 #ifdef __cplusplus
 }
 #endif

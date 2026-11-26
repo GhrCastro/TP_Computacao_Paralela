@@ -106,6 +106,25 @@ int main(void) {
     assert(memcmp(initial, initial_again, sizeof initial) == 0);
     compare_case(&nonmultiple, K, 5, initial);
 
+    /* Forca o fallback global: K*D doubles + K contagens exigem cerca de
+       513 KiB, mais que a shared memory disponivel por bloco nas GPUs CUDA.
+       K=N e cada centroide comeca em um ponto distinto, dando SSE zero. */
+    enum { FALLBACK_N = 64, FALLBACK_D = 1024, FALLBACK_K = 64 };
+    const size_t fallback_items = (size_t)FALLBACK_N * FALLBACK_D;
+    float *fallback_points = (float *)malloc(fallback_items * sizeof(float));
+    float *fallback_initial = (float *)malloc(fallback_items * sizeof(float));
+    assert(fallback_points && fallback_initial);
+    for (int i = 0; i < FALLBACK_N; ++i)
+        for (int j = 0; j < FALLBACK_D; ++j)
+            fallback_points[(size_t)i * FALLBACK_D + j] =
+                (float)i + (float)(j % 7) * 0.001f;
+    memcpy(fallback_initial, fallback_points,
+           fallback_items * sizeof(float));
+    Dataset fallback = {FALLBACK_N, FALLBACK_D, fallback_points};
+    compare_case(&fallback, FALLBACK_K, 1, fallback_initial);
+    free(fallback_initial);
+    free(fallback_points);
+
     /* Parametros invalidos devem falhar antes de acessar a GPU. */
     assert(kmeans_run(NULL, 1, 1, initial, labels) != 0);
     assert(kmeans_run(&nonmultiple, 0, 1, initial, labels) != 0);

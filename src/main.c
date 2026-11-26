@@ -48,9 +48,9 @@ int main(int argc,char **argv) {
     printf("mode=%s\nn=%zu\nd=%d\nk=%lu\niters=%lu\nseed=%lu\ntime_s=%.9f\ninertia=%.12g\n",
            mode,data.n,data.d,k,iters,seed,elapsed,inertia);
 #ifdef _OPENMP
-    /* Permite ao benchmark comprovar a configuracao efetiva, nao apenas a
-       variavel de ambiente solicitada. */
-    printf("omp_threads=%d\n", omp_get_max_threads());
+    /* omp_get_max_threads() fora de uma regiao informa apenas o limite para a
+       proxima equipe. omp.c captura omp_get_num_threads() dentro do laco real. */
+    printf("omp_threads=%d\n", kmeans_omp_last_thread_count());
 #endif
     rc=0;
 done:

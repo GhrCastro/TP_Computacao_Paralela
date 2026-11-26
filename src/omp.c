@@ -52,6 +52,13 @@
 #include <stdint.h>
 #include <string.h>
 #include <math.h>
+#include <omp.h>
+
+static int last_thread_count = 1;
+
+int kmeans_omp_last_thread_count(void) {
+    return last_thread_count;
+}
 
 int kmeans_run(const Dataset *data,int k,int iters,float *centroids,int *labels) {
     if (!data || !data->points || !centroids || !labels || !data->n ||
@@ -64,27 +71,38 @@ int kmeans_run(const Dataset *data,int k,int iters,float *centroids,int *labels)
     size_t *counts=calloc((size_t)k,sizeof *counts);
     if (!sums || !counts) { free(sums); free(counts); return 1; }
     for(int t=0;t<iters;++t) {
+        int actual_threads=1;
         memset(sums,0,kd*sizeof *sums);
         memset(counts,0,(size_t)k*sizeof *counts);
-        /* Pontos divididos entre threads; somas/contagens reduzidas no fim. */
-        #pragma omp parallel for schedule(static) reduction(+: sums[:kd], counts[:k])
-        for(size_t i=0;i<n;++i) {
-            const float *p=points+i*d;
-            double best=INFINITY;
-            int label=0;
-            for(int c=0;c<k;++c) {
-                double dist=0;
-                for(int j=0;j<d;++j) {
-                    double delta=(double)p[j]-centroids[(size_t)c*d+j];
-                    dist+=delta*delta;
+        /* A equipe real e criada aqui. single registra seu tamanho uma vez,
+           sem inserir trabalho extra no laco quente sobre N pontos. */
+        #pragma omp parallel reduction(+: sums[:kd], counts[:k]) shared(actual_threads)
+        {
+            #pragma omp single nowait
+            actual_threads=omp_get_num_threads();
+
+            /* Pontos divididos entre threads; acumuladores reduzidos no join. */
+            #pragma omp for schedule(static)
+            for(size_t i=0;i<n;++i) {
+                const float *p=points+i*d;
+                double best=INFINITY;
+                int label=0;
+                for(int c=0;c<k;++c) {
+                    double dist=0;
+                    for(int j=0;j<d;++j) {
+                        double delta=(double)p[j]-centroids[(size_t)c*d+j];
+                        dist+=delta*delta;
+                    }
+                    /* Comparacao estrita preserva menor indice no empate. */
+                    if(dist<best) { best=dist; label=c; }
                 }
-                /* Comparacao estrita preserva menor indice no empate. */
-                if(dist<best) { best=dist; label=c; }
+                labels[i]=label;
+                ++counts[label];
+                for(int j=0;j<d;++j) sums[(size_t)label*d+j]+=p[j];
             }
-            labels[i]=label;
-            ++counts[label];
-            for(int j=0;j<d;++j) sums[(size_t)label*d+j]+=p[j];
         }
+        /* O join da regiao paralela torna a escrita e reducoes visiveis. */
+        last_thread_count=actual_threads;
         /* Sequencial: K*D operacoes. Clusters vazios mantem o centroide. */
         for(int c=0;c<k;++c)
             if(counts[c])

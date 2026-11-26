@@ -19,7 +19,9 @@ int load_dataset(const char *path, Dataset *out) {
     if (!f) { perror(path); return 1; }
     char *line = NULL;
     size_t len = 0, cap = 0, n = 0;
-    float *points = NULL, lo[10], hi[10];
+    /* Inicializar silencia falsos positivos de -Wmaybe-uninitialized; os
+       valores sao substituidos integralmente pela primeira linha valida. */
+    float *points = NULL, lo[10] = {0}, hi[10] = {0};
     ssize_t bytes;
     while ((bytes = getline(&line, &len, f)) >= 0) {
         if (memchr(line, 0, (size_t)bytes)) goto fail;

@@ -41,9 +41,11 @@ static void small_cases(void) {
 
 /* Roda K-means no dataset sintetico com T threads. */
 static double run_with(int threads,const Dataset *data,int k,float *cent,int *labels) {
+    omp_set_dynamic(0);
     omp_set_num_threads(threads);
     assert(init_centroids(data,k,42,cent)==0);
     assert(kmeans_run(data,k,10,cent,labels)==0);
+    assert(kmeans_omp_last_thread_count()==threads);
     for(size_t i=0;i<(size_t)k*data->d;++i) assert(isfinite(cent[i]));
     return calculate_inertia(data,cent,k);
 }

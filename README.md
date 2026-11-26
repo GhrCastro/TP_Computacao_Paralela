@@ -1,32 +1,52 @@
-# TP Computação Paralela — K-means (sequencial, OpenMP, CUDA)
+# TP Computacao Paralela — K-means em C, OpenMP e CUDA
 
-Projeto de Computação Paralela — PUC Minas, 2026/2.
+Trabalho pratico da PUC Minas (2026/2) com tres implementacoes explicitas do
+algoritmo de Lloyd sobre o dataset real UCI Covertype (581.012 registros e 54
+atributos): sequencial, OpenMP e CUDA.
 
-**Integrantes**
-- Felipe Barros Ratton de Almeida — base real, infraestrutura de dados, K-means sequencial.
-- Arthur Carvalho Rodrigues — K-means OpenMP, testes multicore e medição CPU.
-- Gustavo Henrique R. de Castro — K-means CUDA, integração, validação cruzada e entrega.
+## Integrantes
 
-## Objetivo
-Implementar K-means do zero em C (CPU sequencial e OpenMP) e CUDA C/C++ (GPU), com mesmas entradas, parâmetros e critérios de correção, medindo tempos e speedup. O enunciado exige pelo menos 10 s na versão sequencial no ambiente de teste, medição OpenMP com 1/2/4/8/16/32 threads, comentários de paralelização e documentação de compilação/execução em **readme.txt**.
+- Felipe Barros Ratton de Almeida — sequencial e infraestrutura compartilhada.
+- Arthur Carvalho Rodrigues — OpenMP e benchmarks multicore.
+- Gustavo Henrique R. de Castro — CUDA, validacao cruzada e integracao.
 
-## Dataset escolhido
-[UCI Covertype](https://archive.ics.uci.edu/dataset/31/covertype) (581.012 registros, 54 atributos + rótulo de classe). Baixar o arquivo `covtype.data.gz` da [fonte original](https://kdd.ics.uci.edu/databases/covertype/covtype.data.gz) e descompactar em `data/covtype.data`. Não versionar dados nem executáveis. Os primeiros dez atributos quantitativos serão normalizados uma vez pela rotina compartilhada; descartar o último campo (rótulo).
+## Inicio rapido
 
-## Organização
-- `include/kmeans.h` — API C compartilhada; ver `docs/CONTRATO.md`.
-- `src/common.c` — leitura, normalização, inicialização e funções auxiliares (Felipe).
-- `src/main.c` — CLI compartilhada e medição do cálculo (Felipe).
-- `src/seq.c` — referência sequencial (Felipe).
-- `src/omp.c` — multicore (Arthur).
-- `src/cuda.cu` — GPU (Gustavo).
-- `scripts/benchmark.sh` — medições repetidas (Arthur).
-- `tests/` — testes pequenos e verificação cruzada (trio).
-- `readme.txt` — instruções finais de compilação, execução, tempos reais e análise.
+```sh
+mkdir -p data
+curl -fL https://kdd.ics.uci.edu/databases/covertype/covtype.data.gz \
+  -o data/covtype.data.gz
+gzip -dk data/covtype.data.gz
 
-As três frentes devem usar **o mesmo contrato** e alterar **arquivos distintos**. Criar PRs a partir de `main`, preferencialmente na ordem: base sequencial → OpenMP → CUDA/integração. Não afirmar speedup sem medições reais, não simular GPU e não colocar números inventados nos comentários.
+make all test                 # CPU; `all` nao exige CUDA
+make cuda test_cuda           # requer CUDA Toolkit e GPU CC >= 6.0
 
-## Parâmetros iniciais de benchmark
-`K=64`, `ITERS=50`, `SEED=42`. Calibrar no equipamento final para respeitar o requisito da versão sequencial com pelo menos 10 s e reexecutar todas as versões sob os mesmos parâmetros.
+./bin/kmeans_seq  data/covtype.data 64 50 42
+OMP_NUM_THREADS=8 ./bin/kmeans_omp data/covtype.data 64 50 42
+./bin/kmeans_cuda data/covtype.data 64 50 42
+```
 
-**Status**: planejamento inicial; implementações e medições ainda pendentes.
+Informe a arquitetura da GPU ao compilar: na GTX 1660 Ti medida foi usado
+`make clean cuda CUDA_ARCH=sm_75`; para uma GPU 8.6, use `sm_86`. Sem a
+variavel, o NVCC usa seu proprio padrao. `CUDA_HOME` e `CUDA_LIBDIR` podem ser
+configurados quando o toolkit estiver fora do caminho usual. A compilacao nao
+usa `fast-math`.
+
+## Resultados reais
+
+No experimento CPU de Arthur (i5-12400, Fedora 44), a mediana sequencial foi
+54,001 s e OpenMP atingiu 9,249 s com 32 threads (speedup 5,84). No experimento
+independente de Gustavo (i7-10750H/WSL2 + GTX 1660 Ti), as medianas foram
+147,170 s sequencial e 13,068 s CUDA (speedup 11,26). A inercia foi
+120313,163175 em todas as configuracoes. Maquinas diferentes nao foram usadas
+na mesma razao de speedup.
+
+O documento de entrega exigido pelo professor e [readme.txt](readme.txt). Veja
+tambem [o contrato tecnico](docs/CONTRATO.md),
+[os resultados OpenMP](results/benchmark_omp.txt),
+[os resultados CUDA](results/benchmark_cuda.txt) e
+[o guia de entrevista](docs/ENTREVISTA.md). Para o dia da banca, abra
+[APRESENTACAO.html](APRESENTACAO.html) no navegador: ele contem o roteiro de
+execucao, comandos copiaveis, saidas esperadas e diagnostico, tudo offline.
+No WSL, a demonstracao inteira tambem pode ser executada com um unico comando:
+`source scripts/apresentacao_wsl.sh`.

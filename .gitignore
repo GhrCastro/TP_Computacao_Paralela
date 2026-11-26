@@ -5,6 +5,7 @@
 # Resultados de benchmark e binarios locais
 /bin/
 /build/
+/.wsl-cuda/
 /results/*.csv
 /results/*.tsv
 *.o

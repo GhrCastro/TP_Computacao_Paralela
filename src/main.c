@@ -8,6 +8,9 @@
 #include <time.h>
 #include <math.h>
 #include <string.h>
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 
 static int parse(const char *s,unsigned long max,unsigned long *out) {
     if (!s || !*s) return 1;
@@ -44,6 +47,11 @@ int main(int argc,char **argv) {
     const char *mode=!strcmp(name,"kmeans_omp")?"omp":!strcmp(name,"kmeans_cuda")?"cuda":"seq";
     printf("mode=%s\nn=%zu\nd=%d\nk=%lu\niters=%lu\nseed=%lu\ntime_s=%.9f\ninertia=%.12g\n",
            mode,data.n,data.d,k,iters,seed,elapsed,inertia);
+#ifdef _OPENMP
+    /* omp_get_max_threads() fora de uma regiao informa apenas o limite para a
+       proxima equipe. omp.c captura omp_get_num_threads() dentro do laco real. */
+    printf("omp_threads=%d\n", kmeans_omp_last_thread_count());
+#endif
     rc=0;
 done:
     if(rc) fprintf(stderr,"Falha na execucao do K-means\n");

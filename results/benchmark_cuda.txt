@@ -1,0 +1,19 @@
+# Benchmark K-means: sequencial vs CUDA
+data:       2026-11-25T21:45:53-03:00
+cpu:        Intel(R) Core(TM) i7-10750H CPU @ 2.60GHz
+nucleos:    6 fisicos, 12 logicos
+ram:        15Gi
+so:         Linux 6.18.58.1-microsoft-standard-WSL2 x86_64 GNU/Linux
+gcc:        gcc (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0
+nvcc:       toolkit isolado CUDA 11.5
+gpu:        NVIDIA GeForce GTX 1660 Ti, 6144 MiB, 7.5
+driver:     621.24
+flags:      gcc -O3 -std=c11 | nvcc -O3 -std=c++14 -arch=sm_75
+cuda:       256 threads/bloco; distancia e acumuladores double; reducao parcial em shared memory
+params:     dataset=data/covtype.data K=64 iters=50 seed=42 repeticoes=3 (mediana)
+
+modo       time_s     real_s  speedup            inercia dif_inercia  tempos_individuais
+seq       147.170     156.35        -      120313.163175           -  147.588365108 147.170091527 146.845239106
+# real_s individuais seq: 156.97 156.35 156.04
+cuda       13.068      23.52    11.26      120313.163175    0.00e+00  11.013067368 13.067900545 14.528535856
+# real_s individuais cuda: 20.43 23.52 24.42

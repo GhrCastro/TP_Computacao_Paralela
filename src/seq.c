@@ -1,6 +1,11 @@
 /* K-means sequencial de Lloyd.
- * Tempo real no equipamento final: PENDENTE (K=64, iters=50, seed=42).
- * Compilacao: gcc -O3. Nao inclui leitura, normalizacao ou SSE final.
+ * Tempos CPU reais do experimento de Arthur (2026-11-25, i5-12400 6C/12T,
+ * 32 GB, Fedora 44, GCC 16.2.1, Covertype, K=64, 50 iteracoes, seed=42,
+ * mediana de 3; time_s nao inclui leitura, normalizacao nem SSE final):
+ *   seq=54.001 s; OpenMP 1=54.140, 2=27.073, 4=13.729, 8=11.910,
+ *   16=10.008, 32=9.249 s. Inercia: 120313.163175 em todas.
+ * Uma medicao independente CPU/CUDA consta em results/benchmark_cuda.txt.
+ * Compilacao sequencial: gcc -O3.
  */
 #include "kmeans.h"
 #include <stdlib.h>

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Benchmark sequencial vs OpenMP com 1,2,4,8,16,32 threads.
 # Uso: scripts/benchmark.sh [dataset] [K] [iters] [seed] [repeticoes]
-# Saida: tabela no terminal e em results/benchmark_omp.txt.
+# Saida: tabela no terminal e em arquivo novo com timestamp. Para escolher o
+# destino, use BENCH_OUT=results/meu_experimento.txt (arquivo existente falha).
 #   time_s  = tempo de kmeans_run (impresso pelo binario), mediana das repeticoes
 #   real_s  = processo inteiro (/usr/bin/time -p), mediana; inclui leitura do CSV
 #   speedup = T_seq / T_omp(T); eficiencia = speedup / T
@@ -15,17 +16,38 @@ ITERS=${3:-50}
 SEED=${4:-42}
 REPS=${5:-3}
 THREADS="1 2 4 8 16 32"
-OUT=results/benchmark_omp.txt
+OUT=${BENCH_OUT:-results/benchmark_omp_$(date +%Y%m%d-%H%M%S).txt}
 
 [ -f "$DATA" ] || { echo "Dataset nao encontrado: $DATA (ver docs/BASELINE.md)" >&2; exit 1; }
 make -s seq omp
-mkdir -p results
+mkdir -p "$(dirname "$OUT")"
+[[ ! -e $OUT ]] || { echo "Saida ja existe, escolha BENCH_OUT diferente: $OUT" >&2; exit 1; }
 
 # Mediana de uma lista de numeros; para N par usa a media dos dois centrais.
 median() {
     printf '%s\n' "$@" | sort -g | awk '
         {v[NR]=$1}
         END {if (NR%2) print v[(NR+1)/2]; else print (v[NR/2]+v[NR/2+1])/2}'
+}
+
+# Com referencia zero, somente zero e equivalente; evita divisao por zero.
+within_tolerance() {
+    awk -v got="$1" -v expected="$2" 'BEGIN {
+        if (expected==0) exit !(got==0)
+        d=(got>expected?got-expected:expected-got)/(expected<0?-expected:expected)
+        exit !(d<=0.01)
+    }'
+}
+
+validate_all() {
+    local expected=$1 mode=$2 value
+    shift 2
+    for value in "$@"; do
+        within_tolerance "$value" "$expected" || {
+            echo "Falha: inercia $mode divergente: $value (referencia $expected)" >&2
+            return 1
+        }
+    done
 }
 
 # Executa um binario REPS vezes; define TIME, REAL, INERTIA e ALL (tempos individuais).
@@ -66,11 +88,8 @@ bench() {
 
 bench ./bin/kmeans_seq
 SEQ_TIME=$TIME SEQ_INERTIA=$INERTIA
-for value in $ALL_INERTIAS; do
-    awk -v got="$value" -v expected="$SEQ_INERTIA" 'BEGIN {
-        d=(got>expected?got-expected:expected-got)/expected; exit !(d<=0.01)
-    }' || { echo "Falha: inercia sequencial inconsistente: $value" >&2; exit 1; }
-done
+read -r -a SEQ_INERTIAS <<<"$ALL_INERTIAS"
+validate_all "$SEQ_INERTIA" sequencial "${SEQ_INERTIAS[@]}" || exit 1
 {
     printf '%-8s %9s %9s %8s %10s %18s %11s  %s\n' \
         modo time_s real_s speedup eficiencia inercia dif_inercia "tempos_individuais"
@@ -80,15 +99,12 @@ done
 
 STATUS=0
 for T in $THREADS; do
-    OMP_NUM_THREADS=$T bench ./bin/kmeans_omp
-    for value in $ALL_INERTIAS; do
-        awk -v got="$value" -v expected="$SEQ_INERTIA" 'BEGIN {
-            d=(got>expected?got-expected:expected-got)/expected; exit !(d<=0.01)
-        }' || { echo "Falha: inercia omp-$T divergente: $value" >&2; STATUS=1; }
-    done
+    OMP_DYNAMIC=FALSE OMP_NUM_THREADS=$T bench ./bin/kmeans_omp
+    read -r -a OMP_INERTIAS <<<"$ALL_INERTIAS"
+    validate_all "$SEQ_INERTIA" "omp-$T" "${OMP_INERTIAS[@]}" || STATUS=1
     row=$(awk -v t="$T" -v ts="$TIME" -v r="$REAL" -v seq="$SEQ_TIME" \
               -v inr="$INERTIA" -v sinr="$SEQ_INERTIA" -v all="$ALL" 'BEGIN{
-        d=(inr>sinr?inr-sinr:sinr-inr)/sinr; s=seq/ts
+        d=(sinr==0?(inr==0?0:1):(inr>sinr?inr-sinr:sinr-inr)/sinr); s=seq/ts
         printf "omp-%-4s %9.3f %9.2f %8.2f %10.2f %18s %11.2e  %s%s",
                t, ts, r, s, s/t, inr, d, all, (d<=0.01?"":"  FALHA: dif>1%")}')
     echo "$row" | tee -a "$OUT"

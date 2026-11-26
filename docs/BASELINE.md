@@ -36,3 +36,7 @@ Em ambos: Covertype completo, K=64, 50 iteracoes, seed=42 e inercia
 120313.163175. Assim, o requisito de sequencial >=10 s esta comprovado.
 Detalhes e tempos individuais: `results/benchmark_omp.txt` e
 `results/benchmark_cuda.txt`.
+
+Esses dois arquivos sao evidencias historicas e nao devem ser sobrescritos.
+Novas execucoes dos scripts recebem nomes com timestamp por padrao; a variavel
+`BENCH_OUT` permite definir explicitamente outro destino ainda inexistente.

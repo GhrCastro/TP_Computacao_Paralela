@@ -26,8 +26,11 @@ OMP_NUM_THREADS=8 ./bin/kmeans_omp data/covtype.data 64 50 42
 ./bin/kmeans_cuda data/covtype.data 64 50 42
 ```
 
-Na GTX 1660 Ti medida, use o padrao `CUDA_ARCH=sm_75`. Para outra GPU:
-`make clean cuda CUDA_ARCH=sm_86`, por exemplo. A opcao nao usa `fast-math`.
+Informe a arquitetura da GPU ao compilar: na GTX 1660 Ti medida foi usado
+`make clean cuda CUDA_ARCH=sm_75`; para uma GPU 8.6, use `sm_86`. Sem a
+variavel, o NVCC usa seu proprio padrao. `CUDA_HOME` e `CUDA_LIBDIR` podem ser
+configurados quando o toolkit estiver fora do caminho usual. A compilacao nao
+usa `fast-math`.
 
 ## Resultados reais
 

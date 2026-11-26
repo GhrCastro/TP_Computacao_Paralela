@@ -95,24 +95,31 @@ Requisitos CUDA: CUDA Toolkit com nvcc, driver NVIDIA e GPU CC >= 6.0.
 
   make seq
   make omp
-  make cuda                    # padrao CUDA_ARCH=sm_75
-  make cuda CUDA_ARCH=sm_86    # exemplo para GPU Ampere 8.6
+  make cuda CUDA_ARCH=sm_75    # GTX 1660 Ti do experimento
+  make cuda CUDA_ARCH=sm_86    # exemplo para GPU com CC 8.6
   make test                    # loader + sequencial + OpenMP
   make test_cuda               # executa de fato na GPU
   make clean
 
 make all compila seq+omp e deliberadamente nao exige CUDA, permitindo uso em
 maquinas CPU-only. Flags: GCC -O3 -std=c11; OpenMP acrescenta -fopenmp; NVCC
--O3 -std=c++14 -arch=sm_75. Os C compartilhados sao compilados por GCC; g++
-vincula esses objetos e o objeto do NVCC com libcudart dinamica. Uma instalacao
-normal completa do Toolkit e esperada.
+-O3 -std=c++14 e -arch quando CUDA_ARCH e informado. CUDA_HOME, CUDA_LIBDIR,
+CUDA_CPPFLAGS e CUDA_LDFLAGS permitem toolkits fora do caminho usual. Os C
+compartilhados sao compilados por GCC; por padrao g++ vincula esses objetos e o
+objeto do NVCC com libcudart dinamica, opcao compativel com o toolkit isolado do
+experimento. Uma instalacao completa tambem pode usar
+`CUDA_LINKER=nvcc CUDA_LDLIBS=-lm`.
 
 Testes CUDA cobrem: dois grupos separados, K=1, cluster vazio, empate, N menor
 que um bloco, N=257, parametros invalidos, inicializacao deterministica,
 centroides finitos, labels validos e comparacao com uma referencia CPU local.
+Um caso K=64,D=1024 exige cerca de 513 KiB por bloco e exercita explicitamente
+o fallback de acumulacao global, inclusive com inercia zero.
 Os testes foram compilados por nvcc 11.5 e executados na GTX 1660 Ti: OK. O
-compute-sanitizer nao estava instalado neste WSL; portanto nao se afirma uma
-execucao dessa ferramenta.
+compute-sanitizer 11.5 do pacote isolado foi tentado, mas nao conseguiu injetar
+no processo sob este WSL/driver (`Target application terminated before first
+instrumented API call`). Portanto nao se afirma uma aprovacao do sanitizador;
+essa verificacao deve ser repetida em uma instalacao completa compativel.
 
 6. EXECUCAO
 -----------
@@ -129,10 +136,19 @@ ficam fora para todas as versoes. Tempo total:
 
   /usr/bin/time -p ./bin/kmeans_cuda data/covtype.data 64 50 42
 
-Benchmarks reproduziveis:
+Benchmarks reproduziveis (cada execucao cria um `.txt` com timestamp; use
+BENCH_OUT para escolher outro arquivo sem sobrescrever resultados existentes):
 
   scripts/benchmark.sh data/covtype.data 64 50 42 3
   scripts/benchmark_cuda.sh data/covtype.data 64 50 42 3
+
+O benchmark OpenMP compara `OMP_NUM_THREADS` solicitado com
+`omp_get_num_threads()` capturado dentro da regiao `parallel` que contem o
+`for` real. Ja
+`omp_get_max_threads()` fora da regiao informa apenas o limite da proxima
+equipe e nao comprova quantas threads executaram o algoritmo. Todas as
+repeticoes, e nao apenas a mediana, tem a inercia validada; se a referencia for
+zero, somente zero e aceito.
 
 7. RESULTADOS EXPERIMENTAIS REAIS
 ---------------------------------

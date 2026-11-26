@@ -37,6 +37,10 @@ sequencial medido na mesma maquina da GTX 1660 Ti.
   somas/contagens precisam de reduction ou atomicAdd.
 - **OpenMP reduction:** cada thread recebe acumuladores privados; o runtime os
   combina na barreira. Evita uma operacao atomica por coordenada.
+- **Threads OpenMP efetivas:** `OMP_NUM_THREADS` solicita uma equipe e
+  `omp_get_max_threads()` fora da regiao indica apenas um limite. O programa
+  registra `omp_get_num_threads()` dentro da regiao `parallel` que contem o
+  `for`, comprovando a equipe que realmente executou o K-means.
 - **schedule(static):** reparte intervalos antes do laco, com overhead baixo. O
   trabalho por ponto e regular: todos comparam K*D coordenadas.
 - **Fork-Join:** threads OpenMP se separam no `parallel for` e se juntam na
@@ -194,3 +198,8 @@ sequencial medido na mesma maquina da GTX 1660 Ti.
 30. **Qual foi a principal decisao CUDA?**
     Manter dados residentes e usar reducao parcial em shared memory, equilibrando
     corretude FP64, menor disputa global e uma explicacao defensavel.
+
+31. **Como sabemos que o fallback CUDA funciona?**
+    `test_cuda` usa K=64 e D=1024: acumuladores e contagens requerem cerca de
+    513 KiB, acima da shared memory por bloco, forcam o caminho global e sao
+    comparados com a referencia CPU. O caso tambem valida inercia zero.

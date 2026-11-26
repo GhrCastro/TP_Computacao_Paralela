@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Benchmark controlado entre sequencial e CUDA na mesma maquina.
 # Uso: scripts/benchmark_cuda.sh [dataset] [K] [iters] [seed] [repeticoes]
-# BENCH_SKIP_BUILD=1 reutiliza binarios ja compilados (util no toolkit isolado).
+# BENCH_SKIP_BUILD=1 reutiliza binarios ja compilados. BENCH_OUT escolhe o
+# arquivo; por padrao cada experimento recebe timestamp e nunca sobrescreve outro.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -10,19 +11,40 @@ K=${2:-64}
 ITERS=${3:-50}
 SEED=${4:-42}
 REPS=${5:-3}
-OUT=results/benchmark_cuda.txt
+OUT=${BENCH_OUT:-results/benchmark_cuda_$(date +%Y%m%d-%H%M%S).txt}
+NVCC_CMD=${NVCC:-nvcc}
 
 [[ -f $DATA ]] || { echo "Dataset nao encontrado: $DATA" >&2; exit 1; }
 if [[ ${BENCH_SKIP_BUILD:-0} != 1 ]]; then make -s seq cuda; fi
 [[ -x bin/kmeans_seq && -x bin/kmeans_cuda ]] || {
     echo "Binarios ausentes; execute make seq cuda" >&2; exit 1;
 }
-mkdir -p results
+mkdir -p "$(dirname "$OUT")"
+[[ ! -e $OUT ]] || { echo "Saida ja existe, escolha BENCH_OUT diferente: $OUT" >&2; exit 1; }
 
 median() {
     printf '%s\n' "$@" | sort -g | awk '
         {v[NR]=$1}
         END {if (NR%2) print v[(NR+1)/2]; else print (v[NR/2]+v[NR/2+1])/2}'
+}
+
+within_tolerance() {
+    awk -v got="$1" -v expected="$2" 'BEGIN {
+        if (expected==0) exit !(got==0)
+        d=(got>expected?got-expected:expected-got)/(expected<0?-expected:expected)
+        exit !(d<=0.01)
+    }'
+}
+
+validate_all() {
+    local expected=$1 mode=$2 value
+    shift 2
+    for value in "$@"; do
+        within_tolerance "$value" "$expected" || {
+            echo "Falha: inercia $mode divergente: $value (referencia $expected)" >&2
+            return 1
+        }
+    done
 }
 
 bench() {
@@ -45,6 +67,13 @@ bench() {
     ALL_INERTIAS="${inertias[*]}"
 }
 
+if command -v "$NVCC_CMD" >/dev/null 2>&1; then
+    NVCC_VERSION=$("$NVCC_CMD" --version | awk '/release/{print; exit}')
+else
+    NVCC_VERSION="indisponivel no PATH durante o benchmark"
+fi
+ARCH_DESCRIPTION=${CUDA_ARCH:-"nao informada (binario preexistente ou padrao do nvcc)"}
+
 {
     echo "# Benchmark K-means: sequencial vs CUDA"
     echo "data:       $(date --iso-8601=seconds)"
@@ -53,10 +82,10 @@ bench() {
     echo "ram:        $(free -h | awk '/^Mem:/{print $2}')"
     echo "so:         $(uname -srmo)"
     echo "gcc:        $(gcc --version | head -1)"
-    echo "nvcc:       $(nvcc --version 2>/dev/null | awk '/release/{print; exit}' || echo 'toolkit isolado CUDA 11.5')"
+    echo "nvcc:       $NVCC_VERSION"
     echo "gpu:        $(nvidia-smi --query-gpu=name,memory.total,compute_cap --format=csv,noheader)"
     echo "driver:     $(nvidia-smi --query-gpu=driver_version --format=csv,noheader)"
-    echo "flags:      gcc -O3 -std=c11 | nvcc -O3 -std=c++14 -arch=sm_75"
+    echo "flags:      gcc -O3 -std=c11 | nvcc -O3 -std=c++14; CUDA_ARCH=$ARCH_DESCRIPTION"
     echo "cuda:       256 threads/bloco; distancia e acumuladores double; reducao parcial em shared memory"
     echo "params:     dataset=$DATA K=$K iters=$ITERS seed=$SEED repeticoes=$REPS (mediana)"
     echo
@@ -64,6 +93,8 @@ bench() {
 
 bench ./bin/kmeans_seq
 SEQ_TIME=$TIME; SEQ_INERTIA=$INERTIA
+read -r -a SEQ_INERTIAS <<<"$ALL_INERTIAS"
+validate_all "$SEQ_INERTIA" sequencial "${SEQ_INERTIAS[@]}" || exit 1
 printf '%-6s %10s %10s %8s %18s %11s  %s\n' \
     modo time_s real_s speedup inercia dif_inercia "tempos_individuais" | tee -a "$OUT"
 printf '%-6s %10.3f %10.2f %8s %18s %11s  %s\n' \
@@ -74,14 +105,11 @@ bench ./bin/kmeans_cuda
 CUDA_TIME=$TIME; CUDA_INERTIA=$INERTIA
 SPEEDUP=$(awk -v seq="$SEQ_TIME" -v cuda="$CUDA_TIME" 'BEGIN{printf "%.2f",seq/cuda}')
 DIFF=$(awk -v seq="$SEQ_INERTIA" -v cuda="$CUDA_INERTIA" 'BEGIN{
-    d=(seq>cuda?seq-cuda:cuda-seq)/seq; printf "%.2e",d
+    d=(seq==0?(cuda==0?0:1):(seq>cuda?seq-cuda:cuda-seq)/seq); printf "%.2e",d
 }')
 printf '%-6s %10.3f %10.2f %8s %18s %11s  %s\n' \
     cuda "$TIME" "$REAL" "$SPEEDUP" "$INERTIA" "$DIFF" "$ALL_TIMES" | tee -a "$OUT"
 echo "# real_s individuais cuda: $ALL_REALS" | tee -a "$OUT"
 
-for value in $ALL_INERTIAS; do
-    awk -v got="$value" -v expected="$SEQ_INERTIA" 'BEGIN {
-        d=(got>expected?got-expected:expected-got)/expected; exit !(d<=0.01)
-    }' || { echo "Falha: inercia CUDA $value difere mais de 1%" >&2; exit 1; }
-done
+read -r -a CUDA_INERTIAS <<<"$ALL_INERTIAS"
+validate_all "$SEQ_INERTIA" CUDA "${CUDA_INERTIAS[@]}" || exit 1
